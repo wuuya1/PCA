@@ -1,5 +1,5 @@
 ## Multi-Vehicle Motion Planning with Posture Constraints in Real World
-Python Implementation of multi-vehicle motion planning.
+Python Implementation of multi-vehicle motion planning, including our proposed method, namely postured collision avoidance (PCA), the reciprocal volocity obstacles (RVO), and the  optimal reciprocal collision avoidance (ORCA, also namely RVO2) .
 
 -----
 
