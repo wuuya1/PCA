@@ -22,8 +22,8 @@ class Agent(object):
         self.maxNeighbors = 20
         self.neighborDist = 5.0
         self.timeStep = Config.DT
-        self.timeHorizon = 10.0
-        self.timeHorizonObst = 10.0
+        self.timeHorizon = 50.0
+        self.timeHorizonObst = 50.0
         self.maxSpeed = 1.0
         self.maxAccel = 1.0
         self.safetyFactor = 7.5

@@ -5,7 +5,7 @@ from itertools import combinations, product
 
 from mamp.envs import Config
 from mamp.util import absSq, l2norm, norm, sqr, det, mod2pi, pi_2_pi, normalize, angle_2_vectors
-from mamp.policies.policy import Policy, safety_weight
+from mamp.policies.policy import Policy
 
 
 class Line(object):
@@ -45,12 +45,11 @@ class ORCAPolicy(Policy):
 
             line = Line()
 
-            if distSq > combinedRadiusSq:
-                # No collision.
+            if distSq > combinedRadiusSq:   # No collision.
                 w = relativeVelocity - invTimeHorizon * relativePosition
-
                 # Vector from cutoff center to relative velocity.
                 wLengthSq = absSq(w)
+
                 dotProduct1 = np.dot(w, relativePosition)
 
                 if dotProduct1 < 0.0 and sqr(dotProduct1) > combinedRadiusSq * wLengthSq:
@@ -76,14 +75,14 @@ class ORCAPolicy(Policy):
                         line.direction = -np.array([x, y]) / distSq
 
                     dotProduct2 = np.dot(relativeVelocity, line.direction)
+
                     u = dotProduct2 * line.direction - relativeVelocity
             else:
-                # Collision. Project on cut-off circle of time timeStep.
+                # Collision.Project on cut - off circle of time timeStep.
                 invTimeStep = 1.0 / agent.timeStep
 
                 # Vector from cutoff center to relative velocity.
                 w = relativeVelocity - invTimeStep * relativePosition
-
                 wLength = norm(w)
                 unitW = w / wLength
 
@@ -93,10 +92,11 @@ class ORCAPolicy(Policy):
             line.point = agent.vel_global_frame + 0.5 * u
             self.orcaLines.append(line)
 
-        lineFail, self.newVelocity = self.linear_program2(self.orcaLines, agent.maxSpeed, v_pref, False, self.newVelocity)
+        lineFail = self.linearProgram2(self.orcaLines, agent.maxSpeed, v_pref, False)
 
         if lineFail < len(self.orcaLines):
-            self.newVelocity = self.linear_program3(self.orcaLines, 0, lineFail, agent.maxSpeed, self.newVelocity)
+            self.linearProgram3(self.orcaLines, 0, lineFail, agent.maxSpeed)
+            # print(222, self.newVelocity)
 
         vA_post = np.array([self.newVelocity[0], self.newVelocity[1]])
         vA = agent.vel_global_frame
@@ -115,26 +115,26 @@ class ORCAPolicy(Policy):
 
         return action
 
-    def linear_program1(self, lines, lineNo, radius, optVelocity, directionOpt):
+    def linearProgram1(self, lines, lineNo, radius, optVelocity, directionOpt):
         """
-        Solves a one-dimensional linear program on a specified line subject to linear constraints defined by lines and a circular constraint.
-        Args:
-            lines (list): Lines defining the linear constraints.
-            lineNo (int): The specified line constraint.
-            radius (float): The radius of the circular constraint.
-            optVelocity (Vector2): The optimization velocity.
-            directionOpt (bool): True if the direction should be optimized.
-        Returns:
-            bool: True if successful.
-            Vector2: A reference to the result of the linear program.
+           Solves a one-dimensional linear program on a specified line subject to linear
+           constraints defined by lines and a circular constraint.
+           Args:
+               lines (list): Lines defining the linear constraints.
+               lineNo (int): The specified line constraint.
+               radius (float): The radius of the circular constraint.
+               optVelocity (Vector2): The optimization velocity.
+               directionOpt (bool): True if the direction should be optimized.
+           Returns:
+               bool: True if successful.
+               Vector2: A reference to the result of the linear program.
         """
         dotProduct = np.dot(lines[lineNo].point, lines[lineNo].direction)
         discriminant = sqr(dotProduct) + sqr(radius) - absSq(lines[lineNo].point)
-        dotProduct = lines[lineNo].point @ lines[lineNo].direction
 
         if discriminant < 0.0:
             # Max speed circle fully invalidates line lineNo.
-            return False, None
+            return False
 
         sqrtDiscriminant = sqrt(discriminant)
         tLeft = -dotProduct - sqrtDiscriminant
@@ -147,8 +147,9 @@ class ORCAPolicy(Policy):
             if abs(denominator) <= self.epsilon:
                 # Lines lineNo and i are (almost) parallel.
                 if numerator < 0.0:
-                    return False, None
-                continue
+                    return False
+                else:
+                    continue
 
             t = numerator / denominator
 
@@ -156,68 +157,67 @@ class ORCAPolicy(Policy):
                 # Line i bounds line lineNo on the right.
                 tRight = min(tRight, t)
             else:
-                # Line i bounds line lineNo on the left.
+                # * Line i bounds line lineNo on the left.
                 tLeft = max(tLeft, t)
 
             if tLeft > tRight:
-                return False, None
+                return False
 
         if directionOpt:
             # Optimize direction.
             if np.dot(optVelocity, lines[lineNo].direction) > 0.0:
                 # Take right extreme.
-                result = lines[lineNo].point + tRight * lines[lineNo].direction
+                self.newVelocity = lines[lineNo].point + tRight * lines[lineNo].direction
             else:
                 # Take left extreme.
-                result = lines[lineNo].point + tLeft * lines[lineNo].direction
+                self.newVelocity = lines[lineNo].point + tLeft * lines[lineNo].direction
         else:
             # Optimize closest point.
             t = np.dot(lines[lineNo].direction, optVelocity - lines[lineNo].point)
 
             if t < tLeft:
-                result = lines[lineNo].point + tLeft * lines[lineNo].direction
+                self.newVelocity = lines[lineNo].point + tLeft * lines[lineNo].direction
             elif t > tRight:
-                result = lines[lineNo].point + tRight * lines[lineNo].direction
+                self.newVelocity = lines[lineNo].point + tRight * lines[lineNo].direction
             else:
-                result = lines[lineNo].point + t * lines[lineNo].direction
+                self.newVelocity = lines[lineNo].point + t * lines[lineNo].direction
 
-        return True, result
+        return True
 
-    def linear_program2(self, lines, radius, optVelocity, directionOpt, result):
+    def linearProgram2(self, lines, radius, optVelocity, directionOpt):
         """
-        Solves a two-dimensional linear program subject to linear constraints defined by lines and a circular constraint.
-        Args:
-            lines (list): Lines defining the linear constraints.
-            radius (float): The radius of the circular constraint.
-            optVelocity (Vector2): The optimization velocity.
-            directionOpt (bool): True if the direction should be optimized.
-            result (Vector2): A reference to the result of the linear program.
-        Returns:
-            int: The number of the line it fails on, and the number of lines if successful.
-            Vector2: A reference to the result of the linear program.
+           Solves a two-dimensional linear program subject to linear constraints defined by
+           lines and a circular constraint.
+           Args:
+               lines (list): Lines defining the linear constraints.
+               radius (float): The radius of the circular constraint.
+               optVelocity (Vector2): The optimization velocity.
+               directionOpt (bool): True if the direction should be optimized.
+           Returns:
+               int: The number of the line it fails on, and the number of lines if successful.
+               Vector2: A reference to the result of the linear program.
         """
         if directionOpt:
             # Optimize direction. Note that the optimization velocity is of unit length in this case.
-            result = optVelocity * radius
+            self.newVelocity = optVelocity * radius
         elif absSq(optVelocity) > sqr(radius):
             # Optimize closest point and outside circle.
-            result = normalize(optVelocity) * radius
+            self.newVelocity = normalize(optVelocity) * radius
         else:
             # Optimize closest point and inside circle.
-            result = optVelocity
-
+            self.newVelocity = optVelocity
         for i in range(len(lines)):
-            if det(lines[i].direction, lines[i].point - result) > 0.0:
-                # Result does not satisfy constraint i. Compute new optimal result.
-                tempResult = result
-                success, result = self.linear_program1(lines, i, radius, optVelocity, directionOpt)
-                if not success:
-                    result = tempResult
-                    return i, result
+            if det(lines[i].direction, lines[i].point - self.newVelocity) > 0.0:
+                # Result does not satisfy constraint i.Compute new optimal result.
+                tempResult = self.newVelocity
 
-        return len(lines), result
+                if not self.linearProgram1(lines, i, radius, optVelocity, directionOpt):
+                    self.newVelocity = tempResult
+                    return i
 
-    def linear_program3(self, lines, numObstLines, beginLine, radius, result):
+        return len(lines)
+
+    def linearProgram3(self, lines, numObstLines, beginLine, radius):
         """
         Solves a two-dimensional linear program subject to linear constraints defined by lines and a circular constraint.
         Args:
@@ -225,19 +225,15 @@ class ORCAPolicy(Policy):
             numObstLines (int): Count of obstacle lines.
             beginLine (int): The line on which the 2-d linear program failed.
             radius (float): The radius of the circular constraint.
-            result (Vector2): A reference to the result of the linear program.
-        Returns:
-            Vector2: A reference to the result of the linear program.
         """
         distance = 0.0
 
         for i in range(beginLine, len(lines)):
-            if det(lines[i].direction, lines[i].point - result) > distance:
+            if det(lines[i].direction, lines[i].point - self.newVelocity) > distance:
                 # Result does not satisfy constraint of line i.
                 projLines = []
-
-                for ii in range(numObstLines):
-                    projLines.append(lines[ii])
+                for j in range(numObstLines):
+                    projLines.append(lines[j])
 
                 for j in range(numObstLines, i):
                     line = Line()
@@ -252,22 +248,23 @@ class ORCAPolicy(Policy):
                             # Line i and line j point in opposite direction.
                             line.point = 0.5 * (lines[i].point + lines[j].point)
                     else:
-                        line.point = lines[i].point + (det(lines[j].direction, lines[i].point - lines[j].point) / determinant) * lines[i].direction
+                        p1 = (det(lines[j].direction, lines[i].point - lines[j].point) / determinant)
+                        line.point = lines[i].point + p1 * lines[i].direction
 
                     line.direction = normalize(lines[j].direction - lines[i].direction)
                     projLines.append(line)
 
-                tempResult = result
+                tempResult = self.newVelocity
                 optVelocity = np.array([-lines[i].direction[1], lines[i].direction[0]])
-                lineFail, result = self.linear_program2(projLines, radius, optVelocity, True, result)
-                if lineFail < len(projLines):
+                if self.linearProgram2(projLines, radius, optVelocity, True) < len(projLines):
                     """
-                    This should in principle not happen. The result is by definition already in the feasible region of this linear program. If it fails, it is due to small floating point error, and the current result is kept.
+                    This should in principle not happen. The result is by definition already 
+                    in the feasible region of this linear program. If it fails, it is due to 
+                    small floating point error, and the current result is kept.
                     """
-                    result = tempResult
+                    self.newVelocity = tempResult
 
-                distance = det(lines[i].direction, lines[i].point - result)
-        return result
+                distance = det(lines[i].direction, lines[i].point - self.newVelocity)
 
 
 def compute_v_pref(agent):
