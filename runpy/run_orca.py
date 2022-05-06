@@ -24,28 +24,8 @@ from mamp.policies import policy_dict
 from mamp.dynamics.UnicycleDynamics import UnicycleDynamics
 # Sensors
 from mamp.sensors import Sensor
-from mamp.policies.policy import safety_weight
 from mamp.envs import Config
-
-
-def mod2pi(theta):  # to 0-2*pi
-    return theta - 2.0 * np.pi * np.floor(theta / 2.0 / np.pi)
-
-
-def simulation_experiment1_in_circle(num_agents):
-    center = [0.0, 0.0]
-    rad = 40.0
-    test_qi, test_qf = [], []
-    k = 0  # np.random.uniform(0, 2)
-    for n in range(num_agents):
-        test_qi.append([center[0] + round(rad * np.cos(2 * n * np.pi / num_agents + k * np.pi / 4), 2),
-                        center[1] + round(rad * np.sin(2 * n * np.pi / num_agents + k * np.pi / 4), 2),
-                        mod2pi(2 * n * np.pi / num_agents + k * np.pi / 4 + np.pi)])
-    for n in range(num_agents):
-        test_qf.append([center[0] + round(rad * np.cos(2 * n * np.pi / num_agents + np.pi + k * np.pi / 4), 2),
-                        center[1] + round(rad * np.sin(2 * n * np.pi / num_agents + np.pi + k * np.pi / 4), 2),
-                        mod2pi(2 * n * np.pi / num_agents + k * np.pi / 4)])
-    return test_qi, test_qf
+from mamp.util import mod2pi
 
 
 def simulation_experiment2_in_circle(num_agents, rad):
@@ -60,22 +40,6 @@ def simulation_experiment2_in_circle(num_agents, rad):
         test_qf.append([center[0] + round(rad * np.cos(2 * n * np.pi / num_agents + np.pi + k * np.pi / 4), 2),
                         center[1] + round(rad * np.sin(2 * n * np.pi / num_agents + np.pi + k * np.pi / 4), 2),
                         mod2pi(2 * n * np.pi / num_agents + k * np.pi / 4 + np.pi)])
-    return test_qi, test_qf
-
-
-def real_world_experiment_in_circle(num_agents):
-    center = [1.5, 1.5]
-    rad = 1.5
-    test_qi, test_qf = [], []
-    k = 0  # np.random.uniform(0, 2)
-    for n in range(num_agents):
-        test_qi.append([center[0] + round(rad * np.cos(2 * n * np.pi / num_agents + k * np.pi / 4), 2),
-                        center[1] + round(rad * np.sin(2 * n * np.pi / num_agents + k * np.pi / 4), 2),
-                        mod2pi(2 * n * np.pi / num_agents + k * np.pi / 4 + np.pi)])
-    for n in range(num_agents):
-        test_qf.append([center[0] + round(rad * np.cos(2 * n * np.pi / num_agents + np.pi + k * np.pi / 4), 2),
-                        center[1] + round(rad * np.sin(2 * n * np.pi / num_agents + np.pi + k * np.pi / 4), 2),
-                        mod2pi(2 * n * np.pi / num_agents + k * np.pi / 4)])
     return test_qi, test_qf
 
 
@@ -98,7 +62,7 @@ def set_random_pos(agent_num, r=15):
 
 def build_agents():
     """
-    simulation1: agents' num is 10-150, circle's radius is 15, random's radius is 15
+    simulation 1: agents' num is 10-150, circle's radius is 15, random's radius is 15
     large simulation: agents' num is 200, circle's radius is 20, random's radius is 30
     """
     num_agents = 100

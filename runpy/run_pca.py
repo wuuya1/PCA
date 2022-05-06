@@ -44,26 +44,11 @@ def simulation1_in_circle(num_agents, rad=10.0):
     return test_qi, test_qf
 
 
-def simulation2_in_circle(num_agents):
-    center = [0.0, 0.0]
-    rad = 40.0
+def real_world_experiment_in_circle(num_agents):
+    center = [1.5, 1.5]
+    rad = 1.5
     test_qi, test_qf = [], []
-    k = 0       # rotation parameter
-    for n in range(num_agents):
-        test_qi.append([center[0] + round(rad * np.cos(2 * n * np.pi / num_agents + k * np.pi / 4), 2),
-                        center[1] + round(rad * np.sin(2 * n * np.pi / num_agents + k * np.pi / 4), 2),
-                        mod2pi(2 * n * np.pi / num_agents + k * np.pi / 4 + np.pi)])
-    for n in range(num_agents):
-        test_qf.append([center[0] + round(rad * np.cos(2 * n * np.pi / num_agents + np.pi + k * np.pi / 4), 2),
-                        center[1] + round(rad * np.sin(2 * n * np.pi / num_agents + np.pi + k * np.pi / 4), 2),
-                        mod2pi(2 * n * np.pi / num_agents + k * np.pi / 4 + np.pi)])
-    return test_qi, test_qf
-
-
-def exp_realworld_in_circle(num_agents=4, rad=1.5):
-    center = [0.0, 0.0]
-    test_qi, test_qf = [], []
-    k = 0  # rotation parameter
+    k = 0  # np.random.uniform(0, 2)
     for n in range(num_agents):
         test_qi.append([center[0] + round(rad * np.cos(2 * n * np.pi / num_agents + k * np.pi / 4), 2),
                         center[1] + round(rad * np.sin(2 * n * np.pi / num_agents + k * np.pi / 4), 2),
@@ -94,14 +79,13 @@ def set_random_pos(agent_num, r=40):
 
 def build_agents():
     """
-    simulation1: agents' num is 10-150, circle's radius is 40, random's radius is 40
-    simulation2: agents' num is 200, circle's radius is 50, random's radius is 50
+    simulation 1: agents' num is 10-150, circle's radius is 40, random's radius is 40
+    large simulation: agents' num is 200, circle's radius is 50, random's radius is 50
     real-world: agents' num is 4, circle's is radius 1.5
     """
     num_agents = 100
     test_qi, test_qf = simulation1_in_circle(num_agents, rad=40.0)
     # test_qi, test_qf = set_random_pos(num_agents, r=50)
-    # test_qi, test_qf = simulation2_in_circle(num_agents)
     # test_qi, test_qf = exp_realworld_in_circle()
     radius = 0.2
     pref_speed = 0.22        # turtleBot3's max speed is 0.22 or 0.26 m/s, and 2.84 or 1.82 rad/s
